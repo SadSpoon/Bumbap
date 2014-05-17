@@ -9,6 +9,7 @@ public class BFS implements Runnable{
 	
 	public int counter = 0;
 	private Vector<Dimension> Queue;
+	private Vector<Dimension> OptimalQueue;
 	private Dimension Position;
 	private Player Doll;
 	
@@ -23,7 +24,7 @@ public class BFS implements Runnable{
 			{1,1,0,1,1,1,0,0,0,0,0,1,1,0,0,0,0,0,1,1},
 			{1,1,0,1,0,1,1,1,1,1,1,1,1,1,0,1,1,0,1,1},
 			{1,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1},
-			{1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1},
+			{1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1},
 			{1,0,0,0,0,0,0,0,1,0,1,0,0,1,1,0,1,1,1,1},
 			{1,0,1,0,1,1,1,1,1,0,1,1,0,0,0,0,0,1,1,1},
 			{1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,0,0,1},
@@ -51,6 +52,7 @@ public class BFS implements Runnable{
 		End = new Dimension(18,13);
 		Position = new Dimension(1,1);
 		Queue = new Vector<Dimension>();
+		OptimalQueue = new Vector<Dimension>();
 		this.Doll = Doll;
 		
 		mapGraph[1][1] = 0;
@@ -76,10 +78,36 @@ public class BFS implements Runnable{
 			System.out.println("BFS: jestem na pozycji "+Doll.Position);
 			
 	        try {
-				Thread.sleep(100);
+				Thread.sleep(1);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
+	        
+	        if(Position.equals(End))   // sprawdzamy, czy doszliœmy do punktu K
+	        {
+	            // cofamy siê do punktu S, wymazuj¹c kroki
+
+	            while(mapGraph[Position.height][Position.width] != ODWIEDZONE)
+	            {
+	                switch(mapGraph[Position.height][Position.width])
+	                {
+	                    case LEFT  : mapGraph[Position.height][Position.width++] = ODWIEDZONE; break;
+	                    case UP  : mapGraph[Position.height++][Position.width] = ODWIEDZONE; break;
+	                    case RIGHT : mapGraph[Position.height][Position.width--] = ODWIEDZONE; break;
+	                    case DOWN   : mapGraph[Position.height--][Position.width] = ODWIEDZONE; break;
+	                }
+
+	    			Doll.Position = Position; // wymuszamy wyœwietlenie ca³ego labiryntu
+	    			System.err.println("BFS: jestem na pozycji "+Doll.Position);
+	    	        try {
+	    				Thread.sleep(100);
+	    			} catch (InterruptedException e) {
+	    				e.printStackTrace();
+	    			}
+	            }
+
+	            break;                // wychodzimy z pêtli
+	        }
 	        
 	        if(Position.equals(End))
 	        	System.err.println("BFS: znalazlem wyjscie!");
