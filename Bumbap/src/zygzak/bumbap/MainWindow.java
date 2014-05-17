@@ -8,6 +8,7 @@ import java.awt.Graphics;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
+@SuppressWarnings("serial")
 public class MainWindow extends JPanel implements Runnable{
 
 	JFrame Window;
@@ -17,9 +18,7 @@ public class MainWindow extends JPanel implements Runnable{
 	private KeyboardSupport Keyboard;
 	private TileLoader T;
 	private Player P1;
-	private BFS D;
-	private Thread Pathfinding;
-	
+	private MapSystem M;
 	public MainWindow(){
 		
 		Keyboard = new KeyboardSupport();
@@ -33,7 +32,7 @@ public class MainWindow extends JPanel implements Runnable{
 		Window = new JFrame();
 		Window.setTitle(Title);
 		Window.setDefaultCloseOperation(3);
-		Window.addKeyListener(Keyboard); // TODO
+		Window.addKeyListener(Keyboard);
 		Window.getContentPane().add(this);
 		Window.setResizable(false);
 		Window.pack();
@@ -48,10 +47,9 @@ public class MainWindow extends JPanel implements Runnable{
 		
 		T = new TileLoader();
 		T.load();
+		M = new MapSystem();
 		
-		P1 = new Player(32, 32, T.Player);
-		D = new BFS(P1);
-		Pathfinding = new Thread(D);
+		P1 = new Player(32, 32, T.Player, this);
 	}
 	
 	
@@ -65,7 +63,6 @@ public class MainWindow extends JPanel implements Runnable{
 	public int FPS;
 	
 	public void run() {
-		// TODO Auto-generated method stub
 		long lastLoopTime = System.nanoTime();
 		long now, updateLength, lastFpsTime = 0;
 		long OPTIMAL_TIME = 1000000000/60;
@@ -115,7 +112,7 @@ public class MainWindow extends JPanel implements Runnable{
 	int moveH = 0;
 	long now, lastTime=-1, updateTime = 1000;
 	int addVal = 64;
-	boolean isBFS = false;
+	public boolean isBFS = false;
 	
 	private void Update(double delta){
 		if(lastTime == -1) lastTime = System.currentTimeMillis();
@@ -138,9 +135,9 @@ public class MainWindow extends JPanel implements Runnable{
 			if(Keyboard.A.isPressed) P1.movePlayer(-1, 0, delta);
 			if(Keyboard.D.isPressed) P1.movePlayer(1, 0, delta);
 			if(Keyboard.F1.isPressed) {
-				if(isBFS==false){
-					Pathfinding.start();
+				if(isBFS==false && M!=null){
 					isBFS=true;
+					P1.AutoInteligentMovement(M);		
 				}
 			}
 		}
@@ -170,10 +167,12 @@ public class MainWindow extends JPanel implements Runnable{
 			return;
 		}
 		try{
-			drawMap(g);
-			drawPlayer(g);
+			if(M != null) drawMap(g);
+			if(P1 != null) drawPlayer(g);
 			drawDebugInfo(g);
-		}catch(java.lang.ArrayIndexOutOfBoundsException | NullPointerException c){}
+		}catch(java.lang.ArrayIndexOutOfBoundsException | NullPointerException c){
+			c.printStackTrace();
+		}
 
 	}
 	
@@ -181,15 +180,17 @@ public class MainWindow extends JPanel implements Runnable{
 	
 	private void drawPlayer(Graphics g){
 		if(P1 != null)
-		if(isBFS)g.drawImage(P1.PlayerImage, P1.Position.width*32, P1.Position.height*32, 30, 30, null);
-		else	g.drawImage(P1.PlayerImage, P1.Position.width, P1.Position.height, 30, 30, null);
+			g.drawImage(P1.PlayerImage, P1.Position.width, P1.Position.height, 30, 30, null);
 	}
 	
 	private void drawDebugInfo(Graphics g){
 		g.setFont(new Font("Comic Sans MS", Font.BOLD, 15));
 		g.setColor(Color.WHITE);
 		g.drawString("FPS: "+FPS, 50, 20);
-		g.drawString("Liczba krokow BFS: "+D.counter, 50, 40);
+		if(isBFS && P1 != null) {
+			g.drawString("Liczba krokow BFS: "+P1.BFSSteps(), 50, 40);
+			if(P1.BFSOptiNodes() != -1) g.drawString("Optymalna galaz BFS: "+P1.BFSOptiNodes(), 50, 60);
+		}
 	}
 	
 
@@ -199,16 +200,16 @@ public class MainWindow extends JPanel implements Runnable{
 			g.setColor(Color.white);
 			for(int i = 0; i < 15; i++)
 				for (int j = 0 ; j<20; j++){
-					if(D.map[i][j] == 0)	g.drawImage(T.Tiles.elementAt(10), size*j, size*i, size, size, null);
-					else if(D.map[i][j] == 1)	g.drawImage(T.Tiles.elementAt(12), size*j, size*i, size, size, null);
-					else if(D.map[i][j] == 2)	g.drawImage(T.Tiles.elementAt(63), size*j, size*i, size, size, null);
-					else if(D.map[i][j] == 3)	g.drawImage(T.Tiles.elementAt(83), size*j, size*i, size, size, null);
-					else if(D.map[i][j] == -1)	g.drawString("O", size*j, size*i+16);
-					else if(D.map[i][j] == -2)	g.drawString("A", size*j, size*i+16);
-					else if(D.map[i][j] == -3)	g.drawString("D", size*j, size*i+16);
-					else if(D.map[i][j] == -4)	g.drawString("W", size*j, size*i+16);
-					else if(D.map[i][j] == -5)	g.drawString("S", size*j, size*i+16);
-					else if(D.map[i][j] == 0)	g.drawString("E", size*j, size*i+16);
+					if(M.Matrix[i][j] == 0)	g.drawImage(T.Tiles.elementAt(10), size*j, size*i, size, size, null);
+					else if(M.Matrix[i][j] == 1)	g.drawImage(T.Tiles.elementAt(12), size*j, size*i, size, size, null);
+					else if(M.Matrix[i][j] == 2)	g.drawImage(T.Tiles.elementAt(63), size*j, size*i, size, size, null);
+					else if(M.Matrix[i][j] == 3)	g.drawImage(T.Tiles.elementAt(83), size*j, size*i, size, size, null);
+//					else if(M.Matrix[i][j] == -1)	g.drawString("O", size*j, size*i+16);
+//					else if(M.Matrix[i][j] == -2)	g.drawString("A", size*j, size*i+16);
+//					else if(M.Matrix[i][j] == -3)	g.drawString("D", size*j, size*i+16);
+//					else if(M.Matrix[i][j] == -4)	g.drawString("W", size*j, size*i+16);
+//					else if(M.Matrix[i][j] == -5)	g.drawString("S", size*j, size*i+16);
+//					else if(M.Matrix[i][j] == 0)	g.drawString("E", size*j, size*i+16);
 				}
 
 	}
